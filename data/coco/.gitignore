@@ -10,7 +10,7 @@ MatlabAPI/private/maskApiMex.*
 
 PythonAPI/pycocotools/__init__.pyc
 PythonAPI/pycocotools/_mask.c
-PythonAPI/pycocotools/_mask.so
+PythonAPI/pycocotools/_mask.cpython-36m-x86_64-linux-gnu.so
 PythonAPI/pycocotools/coco.pyc
 PythonAPI/pycocotools/cocoeval.pyc
 PythonAPI/pycocotools/mask.pyc
