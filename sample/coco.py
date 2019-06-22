@@ -66,18 +66,19 @@ def kp_detection(db, k_ind, data_aug, debug):
     max_tag_len = 128
 
     # allocating memory
-    images      = np.zeros((batch_size, 3, input_size[0], input_size[1]), dtype=np.float32)
-    tl_heatmaps = np.zeros((batch_size, categories, output_size[0], output_size[1]), dtype=np.float32)
-    br_heatmaps = np.zeros((batch_size, categories, output_size[0], output_size[1]), dtype=np.float32)
-    ct_heatmaps = np.zeros((batch_size, categories, output_size[0], output_size[1]), dtype=np.float32)
-    tl_regrs    = np.zeros((batch_size, max_tag_len, 2), dtype=np.float32)
-    br_regrs    = np.zeros((batch_size, max_tag_len, 2), dtype=np.float32)
-    ct_regrs    = np.zeros((batch_size, max_tag_len, 2), dtype=np.float32)
-    tl_tags     = np.zeros((batch_size, max_tag_len), dtype=np.int64)
-    br_tags     = np.zeros((batch_size, max_tag_len), dtype=np.int64)
-    ct_tags     = np.zeros((batch_size, max_tag_len), dtype=np.int64)
-    tag_masks   = np.zeros((batch_size, max_tag_len), dtype=np.uint8)
-    tag_lens    = np.zeros((batch_size, ), dtype=np.int32)
+    images      = np.zeros((batch_size, 3, input_size[0], input_size[1]), dtype=np.float32)             # 处理好的图片，BGR
+    tl_heatmaps = np.zeros((batch_size, categories, output_size[0], output_size[1]), dtype=np.float32)  # tl heatmap
+    br_heatmaps = np.zeros((batch_size, categories, output_size[0], output_size[1]), dtype=np.float32)  # br heatmap
+    ct_heatmaps = np.zeros((batch_size, categories, output_size[0], output_size[1]), dtype=np.float32)  # ct heatmap
+    # 对一张图上的每个bounding box，有如下值：
+    tl_regrs    = np.zeros((batch_size, max_tag_len, 2), dtype=np.float32)  # tl offset
+    br_regrs    = np.zeros((batch_size, max_tag_len, 2), dtype=np.float32)  # br offset
+    ct_regrs    = np.zeros((batch_size, max_tag_len, 2), dtype=np.float32)  # ct offset
+    tl_tags     = np.zeros((batch_size, max_tag_len), dtype=np.int64)   # tl tag，指第几号像素点
+    br_tags     = np.zeros((batch_size, max_tag_len), dtype=np.int64)   # br tag，指第几号像素点
+    ct_tags     = np.zeros((batch_size, max_tag_len), dtype=np.int64)   # ct_tag，指第几号像素点
+    tag_masks   = np.zeros((batch_size, max_tag_len), dtype=np.uint8)   # 有bounding box为1，否则为0
+    tag_lens    = np.zeros((batch_size, ), dtype=np.int32)      # 是一个list，表示batch里面每张图有多少个bounding box
 
     db_size = db.db_inds.size
     for b_ind in range(batch_size):

@@ -6,13 +6,13 @@ from config import system_configs
 
 class BASE(object):
     def __init__(self):
-        self._split = None
-        self._db_inds = []
-        self._image_ids = []
+        self._split = None                  # split name
+        self._db_inds = []                  # shuffle是shuffle这个
+        self._image_ids = []                # image id
 
-        self._data            = None
+        self._data            = None        # data
         self._image_hdf5      = None
-        self._image_file      = None
+        self._image_file      = None        # image file path
         self._image_hdf5_file = None
 
         self._mean    = np.zeros((3, ), dtype=np.float32)
@@ -20,10 +20,10 @@ class BASE(object):
         self._eig_val = np.ones((3, ), dtype=np.float32)
         self._eig_vec = np.zeros((3, 3), dtype=np.float32)
 
-        self._configs             = {}
+        self._configs             = {}      # 配置字典，此时为空
         self._train_cfg           = {}
         self._model               = {}
-        self._configs["data_aug"] = True
+        self._configs["data_aug"] = True    # 给配置字典添加“data_aug”词条
 
         self._data_rng            = None
 

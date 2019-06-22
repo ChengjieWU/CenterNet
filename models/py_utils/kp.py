@@ -85,6 +85,33 @@ class kp(nn.Module):
         make_merge_layer=make_merge_layer, make_inter_layer=make_inter_layer, 
         kp_layer=residual
     ):
+        """
+
+        :param db: Database.
+        :param n: 5
+        :param nstack: 2, 重复的次数
+        :param dims: [256, 256, 384, 384, 384, 512]
+        :param modules: [2, 2, 2, 2, 2, 4]
+        :param out_dim: 80, COCO总共80类
+        :param pre:
+        :param cnv_dim:
+        :param make_tl_layer: 返回tl_pool层
+        :param make_br_layer: 返回br_pool层
+        :param make_ct_layer: 返回ct_pool层
+        :param make_cnv_layer:
+        :param make_heat_layer:
+        :param make_tag_layer:
+        :param make_regr_layer:
+        :param make_up_layer:
+        :param make_low_layer:
+        :param make_hg_layer: 返回hourglass层
+        :param make_hg_layer_revr:
+        :param make_pool_layer:
+        :param make_unpool_layer:
+        :param make_merge_layer:
+        :param make_inter_layer:
+        :param kp_layer:
+        """
         super(kp, self).__init__()
 
         self.nstack             = nstack
@@ -185,12 +212,12 @@ class kp(nn.Module):
         self.relu = nn.ReLU(inplace=True)
 
     def _train(self, *xs):
-        image      = xs[0]
-        tl_inds    = xs[1]
-        br_inds    = xs[2]
-        ct_inds    = xs[3]
+        image      = xs[0]      # images: (batch_size, 3, input_size[0], input_size[1])
+        tl_inds    = xs[1]      # tl tag，指第几号像素点: (batch_size, max_tag_len)
+        br_inds    = xs[2]      # br tag，指第几号像素点: (batch_size, max_tag_len)
+        ct_inds    = xs[3]      # ct tag，指第几号像素点: (batch_size, max_tag_len)
 
-        inter      = self.pre(image)
+        inter      = self.pre(image)    # pre网络，可能是卷积模块+残差模块
         outs       = []
 
         layers = zip(
@@ -211,25 +238,32 @@ class kp(nn.Module):
             tl_regr_,  br_regr_ = layer[10:12]
             ct_regr_         = layer[12]
 
-            kp  = kp_(inter)
-            cnv = cnv_(kp)
+            # 卷积层
+            kp  = kp_(inter)    # kp网络，kp_module
+            cnv = cnv_(kp)      # cnv网络，make_cnv_layer
 
-            tl_cnv = tl_cnv_(cnv)
-            br_cnv = br_cnv_(cnv)
-            ct_cnv = ct_cnv_(cnv)
+            # corner pooling与center pooling
+            tl_cnv = tl_cnv_(cnv)   # tl_cnv网络，make_tl_layer即tl_pool
+            br_cnv = br_cnv_(cnv)   # br_cnv网络，make_br_layer即br_pool
+            ct_cnv = ct_cnv_(cnv)   # ct_cnv网络，make_ct_layer即ct_pool
 
+            # heatmap, offset, embedding头部
+            # tl_heat, br_heat, ct_heat网络，make_heat_layer
             tl_heat, br_heat, ct_heat = tl_heat_(tl_cnv), br_heat_(br_cnv), ct_heat_(ct_cnv)
+            # tl_tag, br_tag网络，make_tag_layer
             tl_tag, br_tag        = tl_tag_(tl_cnv),  br_tag_(br_cnv)
+            # tl_regr, br_regr, ct_regr网络，make_regr_layer
             tl_regr, br_regr, ct_regr = tl_regr_(tl_cnv), br_regr_(br_cnv), ct_regr_(ct_cnv)
 
-            tl_tag  = _tranpose_and_gather_feat(tl_tag, tl_inds)
-            br_tag  = _tranpose_and_gather_feat(br_tag, br_inds)
-            tl_regr = _tranpose_and_gather_feat(tl_regr, tl_inds)
-            br_regr = _tranpose_and_gather_feat(br_regr, br_inds)
-            ct_regr = _tranpose_and_gather_feat(ct_regr, ct_inds)
+            tl_tag  = _tranpose_and_gather_feat(tl_tag, tl_inds)    # (batch_size, max_tag_len, feature_channels)
+            br_tag  = _tranpose_and_gather_feat(br_tag, br_inds)    # (batch_size, max_tag_len, feature_channels)
+            tl_regr = _tranpose_and_gather_feat(tl_regr, tl_inds)   # (batch_size, max_tag_len, 2)
+            br_regr = _tranpose_and_gather_feat(br_regr, br_inds)   # (batch_size, max_tag_len, 2)
+            ct_regr = _tranpose_and_gather_feat(ct_regr, ct_inds)   # (batch_size, max_tag_len, 2)
 
             outs += [tl_heat, br_heat, ct_heat, tl_tag, br_tag, tl_regr, br_regr, ct_regr]
 
+            # stack的模式
             if ind < self.nstack - 1:
                 inter = self.inters_[ind](inter) + self.cnvs_[ind](cnv)
                 inter = self.relu(inter)
@@ -306,19 +340,19 @@ class AELoss(nn.Module):
         tl_heats = outs[0::stride]
         br_heats = outs[1::stride]
         ct_heats = outs[2::stride]
-        tl_tags  = outs[3::stride]
-        br_tags  = outs[4::stride]
-        tl_regrs = outs[5::stride]
-        br_regrs = outs[6::stride]
-        ct_regrs = outs[7::stride]
+        tl_tags  = outs[3::stride]  # (stack, batch_size, max_tag_len, feature_channels)
+        br_tags  = outs[4::stride]  # (stack, batch_size, max_tag_len, feature_channels)
+        tl_regrs = outs[5::stride]  # (stack, batch_size, max_tag_len, 2)
+        br_regrs = outs[6::stride]  # (stack, batch_size, max_tag_len, 2)
+        ct_regrs = outs[7::stride]  # (stack, batch_size, max_tag_len, 2)
 
-        gt_tl_heat = targets[0]
-        gt_br_heat = targets[1]
-        gt_ct_heat = targets[2]
-        gt_mask    = targets[3]
-        gt_tl_regr = targets[4]
-        gt_br_regr = targets[5]
-        gt_ct_regr = targets[6]
+        gt_tl_heat = targets[0]     # (batch_size, categories, output_size[0], output_size[1])
+        gt_br_heat = targets[1]     # (batch_size, categories, output_size[0], output_size[1])
+        gt_ct_heat = targets[2]     # (batch_size, categories, output_size[0], output_size[1])
+        gt_mask    = targets[3]     # (batch_size, max_tag_len)
+        gt_tl_regr = targets[4]     # (batch_size, max_tag_len, 2)
+        gt_br_regr = targets[5]     # (batch_size, max_tag_len, 2)
+        gt_ct_regr = targets[6]     # (batch_size, max_tag_len, 2)
         
         # focal loss
         focal_loss = 0

@@ -4,7 +4,7 @@ import numpy as np
 class Config:
     def __init__(self):
         self._configs = {}
-        self._configs["dataset"]           = None
+        self._configs["dataset"]           = None             # dataset name
         self._configs["sampling_function"] = "kp_detection"
 
         # Training Config
@@ -16,7 +16,7 @@ class Config:
         self._configs["max_iter"]          = 500000
         self._configs["val_iter"]          = 100
         self._configs["batch_size"]        = 1
-        self._configs["snapshot_name"]     = None
+        self._configs["snapshot_name"]     = None             # config file path
         self._configs["prefetch_size"]     = 100
         self._configs["weight_decay"]      = False
         self._configs["weight_decay_rate"] = 1e-5

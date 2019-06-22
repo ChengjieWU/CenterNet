@@ -76,6 +76,12 @@ class COCO:
         :return:
         """
         # load dataset
+        # dataset: json file
+        # imgToAnns: image_id -> [annotation]
+        # catToImgs: cat_id -> [image_id]
+        # anns: ann_id -> annotation
+        # imgs: image_id -> img
+        # cats: cat_id -> cat
         self.dataset,self.anns,self.cats,self.imgs = dict(),dict(),dict(),dict()
         self.imgToAnns, self.catToImgs = defaultdict(list), defaultdict(list)
         if not annotation_file == None:

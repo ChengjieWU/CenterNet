@@ -39,12 +39,22 @@ def make_cnv_layer(inp_dim, out_dim):
     return convolution(3, inp_dim, out_dim)
 
 def _gather_feat(feat, ind, mask=None):
-    dim  = feat.size(2)
-    ind  = ind.unsqueeze(2).expand(ind.size(0), ind.size(1), dim)
+    # 从feat中，取出所需点的feature vector
+    # feat: (batch_size, feature_size[0] * feature_size[1], feature_channels)
+    # ind: (batch_size, max_tag_len)
+    dim = feat.size(2)
+    # ind: (batch_size, max_tag_len, feature_channels)
+    ind = ind.unsqueeze(2).expand(ind.size(0), ind.size(1), dim)
+    # feat: (batch_size, max_tag_len, feature_channels)
     feat = feat.gather(1, ind)
     if mask is not None:
+        # mask: (batch_size, max_tag_len, feature_channels)
+        # 若有tag，则为1，否则为0
         mask = mask.unsqueeze(2).expand_as(feat)
+        # feat: (batch_size, tag_len, feature_channels)
         feat = feat[mask]
+        # feat: (batch_size * tag_len, feature_channels)
+        # 估计只有在test的时候，mask才不置为None
         feat = feat.view(-1, dim)
     return feat
 
@@ -170,6 +180,7 @@ def _decode(
     return detections, center
 
 def _neg_loss(preds, gt):
+    """用作FOCAL loss"""
     pos_inds = gt.eq(1)
     neg_inds = gt.lt(1)
 
@@ -194,10 +205,22 @@ def _neg_loss(preds, gt):
     return loss
 
 def _sigmoid(x):
+    """带有clamp的sigmoid"""
     x = torch.clamp(x.sigmoid_(), min=1e-4, max=1-1e-4)
     return x
 
 def _ae_loss(tag0, tag1, mask):
+    """计算AE loss
+
+    使用mask来确定有哪些标签，即确定一幅图中物品的数目。tag0与tag1，先在图中回归出每一个点
+    的embedding，随后用ground truth的物品点位，选出每个物品的成对的两个点。训练时，想要来
+    自相同物品的两点距离小，来自不同物品两点距离大。
+
+    :param tag0: top left embedding, (batch_size, max_tag_len, feature_channels)
+    :param tag1: bottom right embedding, (batch_size, max_tag_len, feature_channels)
+    :param mask: ground truth mask, (batch_size, max_tag_len). 为1若标签存在。
+    :return:
+    """
     num  = mask.sum(dim=1, keepdim=True).float()
     tag0 = tag0.squeeze()
     tag1 = tag1.squeeze()
@@ -224,6 +247,16 @@ def _ae_loss(tag0, tag1, mask):
     return pull, push
 
 def _regr_loss(regr, gt_regr, mask):
+    """计算offset loss
+
+    对图中每个像素，回归出offset，并且已经用ground truth的物品点位取出所需点位的offset，
+    与ground truth的offset计算loss。
+
+    :param regr: (batch_size, max_tag_len, 2)
+    :param gt_regr: (batch_size, max_tag_len, 2)
+    :param mask: ground truth mask, (batch_size, max_tag_len). 为1若标签存在。
+    :return:
+    """
     num  = mask.float().sum()
     mask = mask.unsqueeze(2).expand_as(gt_regr)
 

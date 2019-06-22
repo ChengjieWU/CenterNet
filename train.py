@@ -35,6 +35,7 @@ def parse_args():
     return args
 
 def prefetch_data(db, queue, sample_data, data_aug):
+    """各进程使用sample_data从db中取出数据，放到共享queue中"""
     ind = 0
     print("start prefetching data...")
     np.random.seed(os.getpid())
@@ -47,6 +48,7 @@ def prefetch_data(db, queue, sample_data, data_aug):
             raise e
 
 def pin_memory(data_queue, pinned_data_queue, sema):
+    """从预拿取的数据中，取出数据放到pin_memory中"""
     while True:
         data = data_queue.get()
 
@@ -55,10 +57,12 @@ def pin_memory(data_queue, pinned_data_queue, sema):
 
         pinned_data_queue.put(data)
 
+        # 如信号量取到，说明父线程已结束，则子线程结束
         if sema.acquire(blocking=False):
             return
 
 def init_parallel_jobs(dbs, queue, fn, data_aug):
+    """创建prefetch_data的各进程"""
     tasks = [Process(target=prefetch_data, args=(db, queue, fn, data_aug)) for db in dbs]
     for task in tasks:
         task.daemon = True

@@ -20,7 +20,7 @@ class MSCOCO(DETECTION):
         cache_dir  = system_configs.cache_dir
 
         self._split = split
-        self._dataset = {
+        self._dataset = {                   # _dataset是具体split的名字
             "trainval": "trainval2014",
             "minival": "minival2014",
             "testdev": "testdev2017"
@@ -45,7 +45,7 @@ class MSCOCO(DETECTION):
             [-0.56089297, 0.71832671, 0.41158938]
         ], dtype=np.float32)
 
-        self._cat_ids = [
+        self._cat_ids = [                   # 在_extract_data中被更新
             1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 
             14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
             24, 25, 27, 28, 31, 32, 33, 34, 35, 36, 
@@ -55,10 +55,10 @@ class MSCOCO(DETECTION):
             72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 
             82, 84, 85, 86, 87, 88, 89, 90
         ]
-        self._classes = {
+        self._classes = {                   # 字典，[1-80] -> _cat_ids
             ind + 1: cat_id for ind, cat_id in enumerate(self._cat_ids)
         }
-        self._coco_to_class_map = {
+        self._coco_to_class_map = {         # 字典，_cat_ids -> [1-80]
             value: key for key, value in self._classes.items()
         }
 
@@ -102,12 +102,14 @@ class MSCOCO(DETECTION):
         self._coco    = COCO(self._label_file)
         self._cat_ids = self._coco.getCatIds()
 
-        coco_image_ids = self._coco.getImgIds()
+        coco_image_ids = self._coco.getImgIds()     # image ids
 
-        self._image_ids = [
+        self._image_ids = [                         # image file names
             self._coco.loadImgs(img_id)[0]["file_name"] 
             for img_id in coco_image_ids
         ]
+        # _detections: image file name -> [[x1, y1, x2, y2, cat_id]]
+        # 其中，cat_id是规范化后的1-80的
         self._detections = {}
         for ind, (coco_image_id, image_id) in enumerate(tqdm(zip(coco_image_ids, self._image_ids))):
             image      = self._coco.loadImgs(coco_image_id)[0]
