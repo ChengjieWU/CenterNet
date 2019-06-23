@@ -7,10 +7,11 @@ from config import system_configs
 class BASE(object):
     def __init__(self):
         self._split = None                  # split name
-        self._db_inds = []                  # shuffle是shuffle这个
-        self._image_ids = []                # image id
+        self._db_inds = []  # shuffle是shuffle这个, 所有图片的统一编号
+        self._image_ids = []  # image id, 图片路径或者文件名
 
-        self._data            = None        # data
+        self._data = None  # 数据集的名称，会使用到
+
         self._image_hdf5      = None
         self._image_file      = None        # image file path
         self._image_hdf5_file = None
