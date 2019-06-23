@@ -103,6 +103,11 @@ class LV(DETECTION):
                 self._image_ids.append(os.path.join(dir_path, image_file))
 
         self._detections = {}
+
+        # DEBUG
+        # max_bbox = 0
+        # max_bbox_id = 0
+
         for ind, image_id in enumerate(tqdm(self._image_ids)):
             bboxes = []
             categories = []
@@ -123,6 +128,18 @@ class LV(DETECTION):
                 self._detections[image_id] = np.zeros((0, 5), dtype=np.float32)
             else:
                 self._detections[image_id] = np.hstack((bboxes, categories[:, None]))
+
+        # DEBUG
+        #     if len(categories) > max_bbox:
+        #         max_bbox = len(categories)
+        #         max_bbox_id = ind
+        #
+        # print(max_bbox, max_bbox_id, self._image_ids[max_bbox_id])
+        # image_id = self._image_ids[max_bbox_id]
+        # with Image.open(image_id) as fp:
+        #     img = np.array(fp, dtype=np.uint8)
+        # bboxes = self._detections[image_id]
+        # display_instances(img, bboxes, ["background"] + self._cat_ids)
 
     def detections(self, ind):
         """使用初始全局编号，获取对应图片的detection"""
