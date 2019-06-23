@@ -112,3 +112,31 @@ or
 ```
 python test.py CenterNet-104 --testiter <iter> --split <split> --suffix multi_scale
 ```
+
+## Using Custom Dataset
+
+An example called "lv" will demonstrate how to use CenterNet on custom datasets.
+
+##### Data preparation
+
+Create a folder named `lv` under `data`, and put annotations and images in it. You can organize the files freely as long as you can obtain images and annotations conveniently.
+
+##### Configs preparation
+
+Create a config file in `config` folder. It is where you provide or override system configs and database configs.
+
+##### Dataset subclass
+
+Create `lv.py` under `db`, and create `LV` class, which is a subclass of `DETECTION` it in. The `LV` object initializes with database config. This is where you read custom images and annotations and provide consistent functions for training or testing.
+
+##### Model modifications
+
+Create `LV-CenterNet-104.py` under `models` folder.
+
+##### Sampling function
+
+Sampling function is used to sample data from dataset object. Implement `lv.py` in `sample` folder.
+
+##### Scripts
+
+Create training or testing scripts for the custom dataset.
