@@ -1,5 +1,7 @@
-from db.coco import MSCOCO 
+from db.coco import MSCOCO
+from db.lv import LV
 
 datasets = {
-    "MSCOCO": MSCOCO
+    "MSCOCO": MSCOCO,
+    "LV": LV,
 }

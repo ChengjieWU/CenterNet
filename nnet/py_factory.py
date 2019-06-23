@@ -124,6 +124,18 @@ class NetworkFactory(object):
             params = torch.load(f)
             self.model.load_state_dict(params)
 
+    def load_warmstart_params(self, pretrained_model):
+        print("warmstarting from {}".format(pretrained_model))
+        with open(pretrained_model, "rb") as f:
+            params = torch.load(f)
+            current_state_dict = self.model.state_dict()
+            for param_tensor in current_state_dict:
+                if param_tensor in params \
+                        and current_state_dict[param_tensor].size() \
+                        != params[param_tensor].size():
+                    params.pop(param_tensor)
+            self.model.load_state_dict(params, strict=False)
+
     def load_params(self, iteration):
         cache_file = system_configs.snapshot_file.format(iteration)
         print("loading model from {}".format(cache_file))
@@ -136,4 +148,4 @@ class NetworkFactory(object):
         print("saving model to {}".format(cache_file))
         with open(cache_file, "wb") as f:
             params = self.model.state_dict()
-            torch.save(params, f) 
+            torch.save(params, f)
