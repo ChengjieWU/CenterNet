@@ -27,7 +27,7 @@ def kp_detection(db, k_ind, data_aug, debug):
     gaussian_iou = db.configs["gaussian_iou"]
     gaussian_rad = db.configs["gaussian_radius"]
 
-    max_tag_len = 16
+    max_tag_len = 128
 
     # allocating memory
     images = np.zeros((batch_size, 3, input_size[0], input_size[1]),
