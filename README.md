@@ -26,15 +26,15 @@ CenterNet is a framework for object detection with deep convolutional neural net
 
 ## Architecture
 
-![Network_Structure](https://github.com/Duankaiwen/CenterNet/blob/master/Network_Structure.jpg)
+![Network_Structure](Network_Structure.jpg)
 
 ## Comparison with other methods
 
-![Tabl](https://github.com/Duankaiwen/CenterNet/blob/master/Table1.png)
+![Tabl](Table1.png)
 
-![Tabl](https://github.com/Duankaiwen/CenterNet/blob/master/Table2.png)
+![Tabl](Table2.png)
 
-![Tabl](https://github.com/Duankaiwen/CenterNet/blob/master/Table3.png)
+![Tabl](Table3.png)
 
   In terms of speed, we test the inference speed of both CornerNet and CenterNet on a NVIDIA Tesla P100 GPU. We obtain that the average inference time of CornerNet511-104 (means that the resolution of input images is 511X511 and the backbone is Hourglass-104) is 300ms per image and that of CenterNet511-104 is 340ms. Meanwhile, using the Hourglass-52 backbone can speed up the inference speed. Our CenterNet511-52 takes an average of 270ms to process per image, which is faster and more accurate than CornerNet511-104.
 
