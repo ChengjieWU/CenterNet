@@ -72,6 +72,7 @@ def _tranpose_and_gather_feat(feat, ind):
     return feat
 
 def _topk(scores, K=20):
+    """输入heatmap，返回K个值最大（每幅图全局最大，不区分类别）的点"""
     batch, cat, height, width = scores.size()
 
     topk_scores, topk_inds = torch.topk(scores.view(batch, -1), K)
@@ -81,12 +82,21 @@ def _topk(scores, K=20):
     topk_inds = topk_inds % (height * width)
     topk_ys   = (topk_inds / width).int().float()
     topk_xs   = (topk_inds % width).int().float()
+
+    # 返回的全是(batch, K)大小的array
     return topk_scores, topk_inds, topk_clses, topk_ys, topk_xs
 
 def _decode(
     tl_heat, br_heat, tl_tag, br_tag, tl_regr, br_regr, ct_heat, ct_regr, 
     K=100, kernel=1, ae_threshold=1, num_dets=1000
 ):
+    """把网络的输出（8个feature map）解码为detections和center
+
+    :return: center: (batch, K, 4), 分别为ct_xs, ct_ys, ct_clses, ct_scores
+             detections: (batch, num_dets, 8), 分别为tl_xs, tl_ys, br_xs, br_ys,
+                         scores, tl_scores, br_scores, clses
+             需要注意的是，此处的坐标都是最后的feature map的大小中的坐标！！！
+    """
     batch, cat, height, width = tl_heat.size()
 
     tl_heat = torch.sigmoid(tl_heat)
@@ -110,72 +120,79 @@ def _decode(
     ct_xs = ct_xs.view(batch, 1, K).expand(batch, K, K)
 
     if tl_regr is not None and br_regr is not None:
-        tl_regr = _tranpose_and_gather_feat(tl_regr, tl_inds)
-        tl_regr = tl_regr.view(batch, K, 1, 2)
-        br_regr = _tranpose_and_gather_feat(br_regr, br_inds)
-        br_regr = br_regr.view(batch, 1, K, 2)
-        ct_regr = _tranpose_and_gather_feat(ct_regr, ct_inds)
-        ct_regr = ct_regr.view(batch, 1, K, 2)
+        tl_regr = _tranpose_and_gather_feat(tl_regr, tl_inds)   # (batch, K, 2)
+        tl_regr = tl_regr.view(batch, K, 1, 2)                  # (batch, K, 1, 2)
+        br_regr = _tranpose_and_gather_feat(br_regr, br_inds)   # (batch, K, 2)
+        br_regr = br_regr.view(batch, 1, K, 2)                  # (batch, K, 1, 2)
+        ct_regr = _tranpose_and_gather_feat(ct_regr, ct_inds)   # (batch, K, 2)
+        ct_regr = ct_regr.view(batch, 1, K, 2)                  # (batch, K, 1, 2)
 
-        tl_xs = tl_xs + tl_regr[..., 0]
-        tl_ys = tl_ys + tl_regr[..., 1]
-        br_xs = br_xs + br_regr[..., 0]
-        br_ys = br_ys + br_regr[..., 1]
-        ct_xs = ct_xs + ct_regr[..., 0]
-        ct_ys = ct_ys + ct_regr[..., 1]
+        # 使用tl_regr、br_regr、ct_regr修正结果
+        tl_xs = tl_xs + tl_regr[..., 0]     # (batch, K, K), (i, j)固定i对任意j值相同
+        tl_ys = tl_ys + tl_regr[..., 1]     # (batch, K, K), (i, j)固定i对任意j值相同
+        br_xs = br_xs + br_regr[..., 0]     # (batch, K, K), (i, j)固定j对任意i值相同
+        br_ys = br_ys + br_regr[..., 1]     # (batch, K, K), (i, j)固定j对任意i值相同
+        ct_xs = ct_xs + ct_regr[..., 0]     # (batch, K, K), (i, j)固定j对任意i值相同
+        ct_ys = ct_ys + ct_regr[..., 1]     # (batch, K, K), (i, j)固定j对任意i值相同
 
     # all possible boxes based on top k corners (ignoring class)
-    bboxes = torch.stack((tl_xs, tl_ys, br_xs, br_ys), dim=3)
+    bboxes = torch.stack((tl_xs, tl_ys, br_xs, br_ys), dim=3)   # (batch, K, K, 4)
 
-    tl_tag = _tranpose_and_gather_feat(tl_tag, tl_inds)
-    tl_tag = tl_tag.view(batch, K, 1)
-    br_tag = _tranpose_and_gather_feat(br_tag, br_inds)
-    br_tag = br_tag.view(batch, 1, K)
-    dists  = torch.abs(tl_tag - br_tag)
+    tl_tag = _tranpose_and_gather_feat(tl_tag, tl_inds)         # (batch, K, 1)
+    tl_tag = tl_tag.view(batch, K, 1)                           # (batch, K, 1)
+    br_tag = _tranpose_and_gather_feat(br_tag, br_inds)         # (batch, K, 1)
+    br_tag = br_tag.view(batch, 1, K)                           # (batch, 1, K)
+    # 计算任两对点的embedding值的距离
+    # dists[0][i][j] = torch.abs(tl_tag[0][i][0] - br_tag[0][0][j])
+    dists  = torch.abs(tl_tag - br_tag)                         # (batch, K, K)
 
-    tl_scores = tl_scores.view(batch, K, 1).expand(batch, K, K)
-    br_scores = br_scores.view(batch, 1, K).expand(batch, K, K)
-    scores    = (tl_scores + br_scores) / 2
+    tl_scores = tl_scores.view(batch, K, 1).expand(batch, K, K)     # (batch, K, K), (i, j)固定i对任意j值相同
+    br_scores = br_scores.view(batch, 1, K).expand(batch, K, K)     # (batch, K, K), (i, j)固定j对任意i值相同
+    scores    = (tl_scores + br_scores) / 2     # (batch, K, K), (i, j)表示i号tl与j号br的平均score
 
     # reject boxes based on classes
-    tl_clses = tl_clses.view(batch, K, 1).expand(batch, K, K)
-    br_clses = br_clses.view(batch, 1, K).expand(batch, K, K)
-    cls_inds = (tl_clses != br_clses)
+    tl_clses = tl_clses.view(batch, K, 1).expand(batch, K, K)   # (batch, K, K), (i, j)固定i对任意j值相同
+    br_clses = br_clses.view(batch, 1, K).expand(batch, K, K)   # (batch, K, K), (i, j)固定j对任意i值相同
+    cls_inds = (tl_clses != br_clses)   # (batch, K, K), (i, j) = False iff 第i个tl与第j个br属于同一类
 
     # reject boxes based on distances
-    dist_inds = (dists > ae_threshold)
+    dist_inds = (dists > ae_threshold)  # (batch, K, K), (i, j) = False iff 第i个tl与第j个br的embedding差距小于ae_threshold
 
     # reject boxes based on widths and heights
-    width_inds  = (br_xs < tl_xs)
-    height_inds = (br_ys < tl_ys)
+    width_inds  = (br_xs < tl_xs)       # (batch, K, K), (i, j) = False iff tl_xi <= br_xj
+    height_inds = (br_ys < tl_ys)       # (batch, K, K), (i, j) = False iff tl_yi <= br_yj
 
+    # 使用classes、distances、widths and heights共3个条件筛去不符合要求的所有点对
     scores[cls_inds]    = -1
     scores[dist_inds]   = -1
     scores[width_inds]  = -1
     scores[height_inds] = -1
 
-    scores = scores.view(batch, -1)
-    scores, inds = torch.topk(scores, num_dets)
-    scores = scores.unsqueeze(2)
+    scores = scores.view(batch, -1)     # (batch, K * K)
+    scores, inds = torch.topk(scores, num_dets)     # 选择平均分最高的num_dets个点对，返回(batch, num_dets)
+    scores = scores.unsqueeze(2)        # (batch, num_dets, 1)
 
-    bboxes = bboxes.view(batch, -1, 4)
-    bboxes = _gather_feat(bboxes, inds)
+    # 使用上面的条件，最终在K * K对候选中，选出num_dets对
+    bboxes = bboxes.view(batch, -1, 4)      # (batch, K * K, 4)
+    bboxes = _gather_feat(bboxes, inds)     # (batch, num_dets, 4)
     
     #width = (bboxes[:,:,2] - bboxes[:,:,0]).unsqueeze(2)
     #height = (bboxes[:,:,2] - bboxes[:,:,0]).unsqueeze(2)
     
-    clses  = tl_clses.contiguous().view(batch, -1, 1)
-    clses  = _gather_feat(clses, inds).float()
+    clses  = tl_clses.contiguous().view(batch, -1, 1)   # (batch, K * K, 1)，K个连续的数是一样的
+    clses  = _gather_feat(clses, inds).float()          # (batch, num_dets, 1)
 
-    tl_scores = tl_scores.contiguous().view(batch, -1, 1)
-    tl_scores = _gather_feat(tl_scores, inds).float()
-    br_scores = br_scores.contiguous().view(batch, -1, 1)
-    br_scores = _gather_feat(br_scores, inds).float()
+    tl_scores = tl_scores.contiguous().view(batch, -1, 1)   # (batch, K * K, 1)，K个连续的数是一样的
+    tl_scores = _gather_feat(tl_scores, inds).float()       # (batch, num_dets, 1)
+    br_scores = br_scores.contiguous().view(batch, -1, 1)   # (batch, K * K, 1)，K个数的序列重复K次
+    br_scores = _gather_feat(br_scores, inds).float()       # (batch, num_dets, 1)
 
-    ct_xs = ct_xs[:,0,:]
-    ct_ys = ct_ys[:,0,:]
-    
+    ct_xs = ct_xs[:,0,:]    # (batch, K)
+    ct_ys = ct_ys[:,0,:]    # (batch, K)
+
+    # center: (batch, K, 4), 分别为ct_xs, ct_ys, ct_clses, ct_scores
     center = torch.cat([ct_xs.unsqueeze(2), ct_ys.unsqueeze(2), ct_clses.float().unsqueeze(2), ct_scores.unsqueeze(2)], dim=2)
+    # detections: (batch, num_dets, 8), 分别为tl_xs, tl_ys, br_xs, br_ys, scores, tl_scores, br_scores, clses
     detections = torch.cat([bboxes, scores, tl_scores, br_scores, clses], dim=2)
     return detections, center
 

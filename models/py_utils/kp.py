@@ -92,7 +92,7 @@ class kp(nn.Module):
         :param nstack: 2, 重复的次数
         :param dims: [256, 256, 384, 384, 384, 512]
         :param modules: [2, 2, 2, 2, 2, 4]
-        :param out_dim: 80, COCO总共80类
+        :param out_dim: 总共的类别数，如COCO为80
         :param pre:
         :param cnv_dim:
         :param make_tl_layer: 返回tl_pool层
@@ -255,8 +255,8 @@ class kp(nn.Module):
             # tl_regr, br_regr, ct_regr网络，make_regr_layer
             tl_regr, br_regr, ct_regr = tl_regr_(tl_cnv), br_regr_(br_cnv), ct_regr_(ct_cnv)
 
-            tl_tag  = _tranpose_and_gather_feat(tl_tag, tl_inds)    # (batch_size, max_tag_len, feature_channels)
-            br_tag  = _tranpose_and_gather_feat(br_tag, br_inds)    # (batch_size, max_tag_len, feature_channels)
+            tl_tag  = _tranpose_and_gather_feat(tl_tag, tl_inds)    # (batch_size, max_tag_len, 1)
+            br_tag  = _tranpose_and_gather_feat(br_tag, br_inds)    # (batch_size, max_tag_len, 1)
             tl_regr = _tranpose_and_gather_feat(tl_regr, tl_inds)   # (batch_size, max_tag_len, 2)
             br_regr = _tranpose_and_gather_feat(br_regr, br_inds)   # (batch_size, max_tag_len, 2)
             ct_regr = _tranpose_and_gather_feat(ct_regr, ct_inds)   # (batch_size, max_tag_len, 2)

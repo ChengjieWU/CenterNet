@@ -40,17 +40,30 @@ def color_jittering_(data_rng, image):
         f(data_rng, image, gs, gs_mean, 0.4)
 
 def crop_image(image, center, size):
+    """以center为中心，在image上切下大小为size的图片。
+
+    保证center中心仍在crop图片的中心，且超出原图边缘的部分，补0。
+
+    :param image: image
+    :param center: (y, x) for center
+    :param size: (height, width)
+    :return: cropped_image: crop出的图片. border: [ytl, tbr, xtl, xbr], 是非0区域
+             在crop出的图片中的坐标. offset: 截图左上角点在原图中的坐标。
+    """
     cty, ctx            = center
     height, width       = size
     im_height, im_width = image.shape[0:2]
     cropped_image       = np.zeros((height, width, 3), dtype=image.dtype)
 
+    # 由于原图大小限制，实际截到的位置
     x0, x1 = max(0, ctx - width // 2), min(ctx + width // 2, im_width)
     y0, y1 = max(0, cty - height // 2), min(cty + height // 2, im_height)
 
+    # 实际截到的图，边缘距离crop中心的距离
     left, right = ctx - x0, x1 - ctx
     top, bottom = cty - y0, y1 - cty
 
+    # 保证center中心仍在crop出图片的中心
     cropped_cty, cropped_ctx = height // 2, width // 2
     y_slice = slice(cropped_cty - top, cropped_cty + bottom)
     x_slice = slice(cropped_ctx - left, cropped_ctx + right)

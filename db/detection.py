@@ -5,28 +5,29 @@ class DETECTION(BASE):
     def __init__(self, db_config):
         super(DETECTION, self).__init__()
 
-        self._configs["categories"]      = 80       # COCO有80类
-        self._configs["kp_categories"]   = 1
+        self._configs["categories"]      = 80       # 数据中类别的数目
+        self._configs["kp_categories"]   = 1        # 似乎从来没有使用到
         self._configs["rand_scales"]     = [1]
         self._configs["rand_scale_min"]  = 0.8
         self._configs["rand_scale_max"]  = 1.4
         self._configs["rand_scale_step"] = 0.2
 
-        self._configs["input_size"]      = [511]
-        self._configs["output_sizes"]    = [[128, 128]]
+        # 网络与输入输出大小无关，可处理任意大小的图片，只是训练时，设定如下
+        self._configs["input_size"]      = [511]    # 网络的输入图片大小，由于全卷积，故建立模型中用不到，实际只在sample准备训练数据图片时使用到
+        self._configs["output_sizes"]    = [[128, 128]]  # 网络输出图片大小，由于全卷积，故建立模型中用不到，实际只在sample准备训练数据标注时使用到
 
-        self._configs["nms_threshold"]   = 0.5
-        self._configs["max_per_image"]   = 100
-        self._configs["top_k"]           = 100
-        self._configs["ae_threshold"]    = 0.5
-        self._configs["nms_kernel"]      = 3
+        self._configs["nms_threshold"]   = 0.5      # soft_nms中的threshold
+        self._configs["max_per_image"]   = 100      # 检测时，每张图片bbox的最大数目
+        self._configs["top_k"]           = 100      # 选择K个值最大的点
+        self._configs["ae_threshold"]    = 0.5      # embedding的距离大于此，即判定不是同一个物体的框
+        self._configs["nms_kernel"]      = 3        # nms kernel size
 
-        self._configs["nms_algorithm"]   = "exp_soft_nms"
-        self._configs["weight_exp"]      = 8
-        self._configs["merge_bbox"]      = False
+        self._configs["nms_algorithm"]   = "exp_soft_nms"   # {"nms": 0, "linear_soft_nms": 1, "exp_soft_nms": 2}
+        self._configs["weight_exp"]      = 8        # weight_exp in soft_nms
+        self._configs["merge_bbox"]      = False    # bool, True时使用soft_nms_merge, 否则使用soft_nms
         
-        self._configs["data_aug"]        = True
-        self._configs["lighting"]        = True
+        self._configs["data_aug"]        = True     # bool
+        self._configs["lighting"]        = True     # bool
 
         self._configs["border"]          = 128
         self._configs["gaussian_bump"]   = True
@@ -38,8 +39,9 @@ class DETECTION(BASE):
         self._configs["rand_samples"]    = False
         self._configs["special_crop"]    = False
 
-        self._configs["test_scales"]     = [1]
+        self._configs["test_scales"]     = [1]      # 浮点数，使用哪些scale进行测试
 
+        # 下面这三条似乎也从未使用到
         self._train_cfg["rcnn"] = dict(
                             assigner=dict(
                                 pos_iou_thr=0.5,
