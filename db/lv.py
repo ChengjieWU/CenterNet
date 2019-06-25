@@ -30,14 +30,6 @@ category_trans_dict = {"拉链头0号": "LaLianTou",
                        "产地标": "ChanDiBiao",
                        }
 
-category_zh_dict = {
-    "LaLianTou": "拉链头",
-    "SuoKouTou": "锁扣头",
-    "PiQian": "皮签",
-    "MaoDing": "铆钉",
-    "ChanDiBiao": "产地标",
-}
-
 
 class LV(DETECTION):
     def __init__(self, db_config):
@@ -54,13 +46,13 @@ class LV(DETECTION):
 
         self._cat_ids = [
             "LaLianTou", "SuoKouTou", "PiQian", "MaoDing", "ChanDiBiao"]
-        self._classes = {x+1: y for x, y in enumerate(self._cat_ids)}
+        self._classes = {x+1: y for x, y in enumerate(self._cat_ids)}   # [1-5] -> _cat_id
         self._lv_to_class_map = {                 # 字典，_cat_id -> [1-5]
             value: key for key, value in self._classes.items()
         }
 
         # self._detections是最主要的数据存储处
-        # image file path -> [[x1, y1, x2, y2, cat_id]]
+        # image file path -> [[x1, y1, x2, y2, [1-5]内部编号]]
         self._detections = None
         self._cache_file = os.path.join(cache_dir, "{}.pkl".format(self._data))
         self._load_data()
@@ -80,8 +72,8 @@ class LV(DETECTION):
                 self._detections, self._image_ids = pickle.load(f)
 
     def class_name(self, cid):
-        """使用[1-5]的内部类别编号，获取类别的中文名字"""
-        return category_zh_dict[self._classes[cid]]
+        """使用[1-5]的内部类别编号，获取类别的拼音名字"""
+        return self._classes[cid]
 
     def _image2annotation(self, image_path):
         """在LV数据集格式下，将image的路径转换为其标注的路径"""
@@ -152,10 +144,100 @@ class LV(DETECTION):
         # 此处覆盖BASE类中的实现，因为LV未使用到self._image_file属性
         return self._image_ids[ind]
 
-    def display(self, ind):
-        """使用此打乱时刻的全局编号，显示对应图片，带有bounding box"""
-        image_id = self._image_ids[self._db_inds[ind]]
+    @staticmethod
+    def _to_float(x):
+        return float("{:.2f}".format(x))
+
+    def convert_to_coco(self, all_bboxes):
+        """把all_bboxes的输出整理为COCO标注的格式
+
+        :param all_bboxes: image_id -> {[1-5] -> (该类中检测到的数目, 5)},
+                           分别为tl_xs, tl_ys, br_xs, br_ys, scores
+        :return: detections: [{"image_id": , "category_id": , "bbox": , "score": }]
+        """
+        detections = []
+        for image_id in all_bboxes:
+            # coco_id = self._coco_eval_ids[image_id]
+            for cls_ind in all_bboxes[image_id]:
+                category_id = self._classes[cls_ind]
+                for bbox in all_bboxes[image_id][cls_ind]:
+                    bbox[2] -= bbox[0]
+                    bbox[3] -= bbox[1]
+
+                    score = bbox[4]
+                    bbox  = list(map(self._to_float, bbox[0:4]))
+
+                    detection = {
+                        # "image_id": coco_id,
+                        "image_id": image_id,       # 由于没有coco_id，此处使用image_id
+                        "category_id": category_id,
+                        "bbox": bbox,
+                        "score": float("{:.2f}".format(score))
+                    }
+
+                    detections.append(detection)
+        return detections
+
+    def convert_to_detections(self, all_bboxes, score_threshold=0.5):
+        """把all_bboxes的输出整理为类detection的格式
+
+        :param all_bboxes: image_id -> {[1-5] -> (该类中检测到的数目, 5)},
+                           分别为tl_xs, tl_ys, br_xs, br_ys, scores
+        :param score_threshold: float, 不接受score低于该阈值的候选框
+        :return: detections: image_id -> [[x1, y1, x2, y2, cat_id, score]]
+        """
+        detections = {}
+        for image_id in all_bboxes:
+            detection = []
+            for cls_ind in all_bboxes[image_id]:
+                for bbox in all_bboxes[image_id][cls_ind]:
+                    score = bbox[4]
+                    if score >= score_threshold:
+                        bbox = list(map(self._to_float, bbox[0:4]))
+                        bbox.extend([cls_ind, score])
+                        detection.append(bbox)
+            detection = np.array(detection, dtype=float)
+            if detection.size == 0:
+                detections[image_id] = np.zeros((0, 6), dtype=np.float32)
+            else:
+                detections[image_id] = detection
+        return detections
+
+    # def evaluate(self, result_json, cls_ids, image_ids, gt_json=None):
+    #     if self._split == "testdev":
+    #         return None
+    #
+    #     coco = self._coco if gt_json is None else COCO(gt_json)
+    #
+    #     eval_ids = [self._coco_eval_ids[image_id] for image_id in image_ids]
+    #     cat_ids  = [self._classes[cls_id] for cls_id in cls_ids]
+    #
+    #     coco_dets = coco.loadRes(result_json)
+    #     coco_eval = COCOeval(coco, coco_dets, "bbox")
+    #     coco_eval.params.imgIds = eval_ids
+    #     coco_eval.params.catIds = cat_ids
+    #     coco_eval.evaluate()
+    #     coco_eval.accumulate()
+    #     coco_eval.summarize()
+    #     coco_eval.evaluate_fd()
+    #     coco_eval.accumulate_fd()
+    #     coco_eval.summarize_fd()
+    #     return coco_eval.stats[0], coco_eval.stats[12:]
+
+    def display(self, ind, save_path=None, show=True):
+        """使用初始全局编号，显示对应图片，带有bounding box，用于显示训练集"""
+        image_id = self._image_ids[ind]
         with Image.open(image_id) as fp:
             img = np.array(fp, dtype=np.uint8)
         bboxes = self._detections[image_id]
-        display_instances(img, bboxes, ["background"] + self._cat_ids)
+        display_instances(img, bboxes, ["background"] + self._cat_ids,
+                          save_path=save_path, show=show)
+
+    def display_detection(self, det, save_path=None, show=True):
+        """输入convert_to_detections后产生的结果，显示所有图片，用于测试"""
+        for image_id, bboxes in det.items():
+            bboxes = np.array(bboxes, dtype=np.float32)
+            with Image.open(image_id) as fp:
+                img = np.array(fp, dtype=np.uint8)
+            display_instances(img, bboxes[:, 0:5], ["background"] + self._cat_ids,
+                              scores=bboxes[:, 5], save_path=save_path, show=show)

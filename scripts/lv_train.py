@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import os
 
 import json
@@ -6,7 +5,6 @@ import torch
 import numpy as np
 import queue
 import pprint
-import random
 import argparse
 import importlib
 import threading
@@ -114,14 +112,14 @@ def train(training_dbs, validation_db, start_iter=0):
     validation_pin_semaphore.acquire()
 
     training_pin_args = (
-    training_queue, pinned_training_queue, training_pin_semaphore)
+        training_queue, pinned_training_queue, training_pin_semaphore)
     training_pin_thread = threading.Thread(target=pin_memory,
                                            args=training_pin_args)
     training_pin_thread.daemon = True
     training_pin_thread.start()
 
     validation_pin_args = (
-    validation_queue, pinned_validation_queue, validation_pin_semaphore)
+        validation_queue, pinned_validation_queue, validation_pin_semaphore)
     validation_pin_thread = threading.Thread(target=pin_memory,
                                              args=validation_pin_args)
     validation_pin_thread.daemon = True
@@ -225,9 +223,6 @@ if __name__ == "__main__":
 
     configs["system"]["snapshot_name"] = args.cfg_file
     system_configs.update_config(configs["system"])
-
-    train_split = system_configs.train_split
-    val_split = system_configs.val_split
 
     print("loading all datasets...")
     dataset = system_configs.dataset

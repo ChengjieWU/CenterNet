@@ -96,10 +96,17 @@ def display_instances(image, boxes, class_names,
 
         # Bounding box
         x1, y1, x2, y2 = boxes[i, :4]
+        # original style
+        # ax.add_patch(
+        #     patches.Rectangle(
+        #         (x1, y1), x2 - x1, y2 - y1, linewidth=2, alpha=0.7,
+        #         linestyle="dashed", edgecolor=color, facecolor='none')
+        # )
+        # new style
         ax.add_patch(
             patches.Rectangle(
-                (x1, y1), x2 - x1, y2 - y1, linewidth=2, alpha=0.7,
-                linestyle="dashed", edgecolor=color, facecolor='none')
+                (x1, y1), x2 - x1, y2 - y1, linewidth=4.0, linestyle="dashed",
+                edgecolor=color, fill=False)
         )
 
         # Label
@@ -110,8 +117,13 @@ def display_instances(image, boxes, class_names,
             caption = "{} {:.3f}".format(label, score) if score else label
         else:
             caption = captions[i]
-        ax.text(x1, y1 + 8, caption,
-                color='w', size=11, backgroundcolor="none")
+        # original style
+        # ax.text(x1, y1 + 8, caption,
+        #         color='w', size=11, backgroundcolor="none")
+        # new style
+        ax.text(x1 + 1, y1 - 3, caption,
+                bbox=dict(facecolor=color, ec='black', lw=2, alpha=0.5),
+                fontsize=15, color='white', weight='bold')
 
     ax.imshow(masked_image.astype(np.uint8))
     if auto_show and show:
