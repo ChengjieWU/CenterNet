@@ -329,17 +329,12 @@ def kp_detection(db: LV, nnet: NetworkFactory,
             db.display(db_ind, os.path.join(debug_dir, "{}_gt.jpg".format(db_ind)), show=False)
 
     # top_bboxes: image_id -> {[1-5] -> (该类中检测到的数目, 5)}, 分别为tl_xs, tl_ys, br_xs, br_ys, scores
-    # detections = db.convert_to_detections(top_bboxes)
+    # 显示检测结果
+    detections = db.convert_to_detections(top_bboxes, score_threshold=0.5)
     # db.display_detection(detections)
-    # result_json = os.path.join(result_dir, "results.json")
-    # detections = db.convert_to_coco(top_bboxes)
-    # with open(result_json, "w") as f:
-    #     json.dump(detections, f)
-    #
-    # cls_ids = list(range(1, categories + 1))
-    # image_ids = [db.image_ids(ind) for ind in db_inds]
-    # db.evaluate(result_json, cls_ids, image_ids)
-    # return 0
+    # 评估检测结果
+    db.evaluate(detections)
+    return 0
 
 
 def testing(db, nnet, result_dir, debug=False):
