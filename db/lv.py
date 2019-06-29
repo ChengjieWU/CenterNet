@@ -36,7 +36,7 @@ category_trans_dict = {"拉链头0号": "LaLianTou",
 
 
 class LV(DETECTION):
-    def __init__(self, db_config):
+    def __init__(self, db_config, demo=False):
         super(LV, self).__init__(db_config)
         data_dir = system_configs.data_dir
         result_dir = system_configs.result_dir
@@ -55,14 +55,15 @@ class LV(DETECTION):
             value: key for key, value in self._classes.items()
         }
 
-        # self._detections是最主要的数据存储处
-        # image file path -> [[x1, y1, x2, y2, [1-5]内部编号]]
-        self._detections = None
-        self._cache_file = os.path.join(cache_dir, "{}.pkl".format(self._data))
-        self._load_data()
-        self._db_inds = np.arange(len(self._image_ids))     # 给所有图片统一的编号
-        # self._image_ids与self._db_inds均是在BASE中定义的，self._image_ids保存所有
-        # 图片的路径、或文件名，self._db_inds给所有图片统一编号
+        if not demo:
+            # self._detections是最主要的数据存储处
+            # image file path -> [[x1, y1, x2, y2, [1-5]内部编号]]
+            self._detections = None
+            self._cache_file = os.path.join(cache_dir, "{}.pkl".format(self._data))
+            self._load_data()
+            self._db_inds = np.arange(len(self._image_ids))     # 给所有图片统一的编号
+            # self._image_ids与self._db_inds均是在BASE中定义的，self._image_ids保存所有
+            # 图片的路径、或文件名，self._db_inds给所有图片统一编号
 
     def _load_data(self):
         print("loading from cache file: {}".format(self._cache_file))

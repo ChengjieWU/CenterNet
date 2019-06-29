@@ -82,3 +82,21 @@ def crop_image(image, center, size):
     ])
 
     return cropped_image, border, offset
+
+
+def constraint_max_size(x, cons: int):
+    """限制图片最长边不超过某一值
+
+    :param x: A 3-d numpy array of shape [height, width, channel].
+    :param cons: max constraint
+    :return: A resized 3-d numpy array.
+    """
+    height, width = x.shape[0:2]
+    if max(height, width) <= cons:
+        return x
+    if height > width:
+        ratio = height / cons
+        return cv2.resize(x, (cons, int(width // ratio)))
+    else:
+        ratio = width / cons
+        return cv2.resize(x, (int(height // ratio), cons))
