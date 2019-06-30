@@ -263,7 +263,7 @@ def kp_detection_image(image, db: LV, nnet: NetworkFactory,
         fig.axes.get_yaxis().set_visible(False)
         # bboxes = {}
         for j in range(1, categories + 1):
-            keep_inds = (ret[j][:, -1] >= 0.4)
+            keep_inds = (ret[j][:, -1] >= 0.4)      # 这边调整画图时接收的阈值
             cat_name = db.class_name(j)
             for bbox in ret[j][keep_inds]:
                 score = bbox[4]
@@ -311,7 +311,7 @@ def kp_detection(db: LV, nnet: NetworkFactory,
     if not os.path.exists(debug_dir):
         os.makedirs(debug_dir)
 
-    db_inds = db.db_inds[100:200] if debug else db.db_inds[:5000]  # 取5000张图片
+    db_inds = db.db_inds[100:200] if debug else db.db_inds[:500]  # 取500张图片
     num_images = db_inds.size
 
     top_bboxes = {}
@@ -321,6 +321,8 @@ def kp_detection(db: LV, nnet: NetworkFactory,
         image_id = db.image_ids(db_ind)
         image_file = db.image_file(db_ind)
         image = cv2.imread(image_file)
+        if max(image.shape[0], image.shape[1]) > 1024:
+            continue
 
         top_bboxes[image_id] = kp_detection_image(
             image, db, nnet, debug, decode_func, db_ind, debug_dir)
@@ -341,6 +343,7 @@ def testing(db, nnet, result_dir, debug=False):
 
 def demoing(image_id, db, nnet, result_file):
     image = cv2.imread(image_id)
+    # 由于可能有很大的图，因此也要限制大小
     image = constraint_max_size(image, 1024)
     det = dict()
     det[image_id] = globals()[system_configs.sampling_function + "_image"](image, db, nnet)

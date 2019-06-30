@@ -18,6 +18,9 @@ def parse_args():
     parser.add_argument("--testiter", dest="testiter",
                         help="test at iteration i",
                         default=None, type=int)
+    parser.add_argument("--split", dest="split",
+                        help="which split to use",
+                        default="LV1", type=str)
     parser.add_argument("--suffix", dest="suffix", default=None, type=str)
     parser.add_argument("--debug", action="store_true")
 
@@ -31,9 +34,9 @@ def make_dirs(directories):
             os.makedirs(directory)
 
 
-def test(db, testiter, debug=False, suffix=None):
+def test(db, split, testiter, debug=False, suffix=None):
     result_dir = system_configs.result_dir
-    result_dir = os.path.join(result_dir, str(testiter))
+    result_dir = os.path.join(result_dir, str(testiter), split)
 
     if suffix is not None:
         result_dir = os.path.join(result_dir, suffix)
@@ -60,6 +63,7 @@ class Args:
     def __init__(self):
         self.cfg_file = "LV-CenterNet-104"
         self.testiter = 45000
+        self.split = "LV1"
         self.suffix = None
         self.debug = False
 
@@ -84,7 +88,7 @@ if __name__ == "__main__":
 
     print("loading all datasets...")
     dataset = system_configs.dataset
-    testing_db = datasets[dataset](configs["db"])
+    testing_db = datasets[dataset](configs["db"], args.split)
 
     print("system config...")
     pprint.pprint(system_configs.full)
@@ -92,4 +96,4 @@ if __name__ == "__main__":
     print("db config...")
     pprint.pprint(testing_db.configs)
 
-    test(testing_db, args.testiter, args.debug, args.suffix)
+    test(testing_db, args.split, args.testiter, args.debug, args.suffix)

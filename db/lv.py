@@ -34,19 +34,49 @@ category_trans_dict = {"拉链头0号": "LaLianTou",
                        "产地标": "ChanDiBiao",
                        }
 
+category_trans_dict_lv1 = {"五金-拉链头0": "LaLianTou",
+                           "五金-拉链头1": "LaLianTou",
+                           "五金-拉链头2": "LaLianTou",
+                           "五金-拉链头3": "LaLianTou",
+                           "五金-拉链头4": "LaLianTou",
+                           "五金-拉链头5": "LaLianTou",
+                           "五金-锁扣头0": "SuoKouTou",
+                           "五金-锁扣头1": "SuoKouTou",
+                           "五金-锁扣头2": "SuoKouTou",
+                           "五金-锁扣头3": "SuoKouTou",
+                           "皮签-皮签1": "PiQian",
+                           "皮签-皮签2": "PiQian",
+                           "五金-铆钉0": "MaoDing",
+                           "五金-铆钉1": "MaoDing",
+                           "五金-铆钉2": "MaoDing",
+                           "五金-铆钉3": "MaoDing",
+                           "出厂标号": "ChanDiBiao"}
+
 
 class LV(DETECTION):
-    def __init__(self, db_config, demo=False):
+    def __init__(self, db_config, split="LV2", demo=False):
+        """LV数据集格式
+
+        :param db_config:
+        :param split: "LV1", "LV2"
+        :param demo: bool, if True, no data is actually loaded so split does not
+                     matter.
+        """
         super(LV, self).__init__(db_config)
         data_dir = system_configs.data_dir
         result_dir = system_configs.result_dir
         cache_dir = system_configs.cache_dir
 
-        self._LV_dir = os.path.join(data_dir, "lv")
-        self._label_dir = os.path.join(self._LV_dir, "annotations")
-        self._image_dir = os.path.join(self._LV_dir, "images")
+        self._split = split     # split名称
+        self._dataset = {       # 实际使用的split名称
+            "LV1": "LV1",
+            "LV2": "LV2"
+        }[self._split]
+        self._data = "lv"       # 数据集名称
 
-        self._data = "lv"
+        self._LV_dir = os.path.join(data_dir, "lv")
+        self._label_dir = os.path.join(self._LV_dir, "annotations", self._dataset)
+        self._image_dir = os.path.join(self._LV_dir, "images", self._dataset)
 
         self._cat_ids = [
             "LaLianTou", "SuoKouTou", "PiQian", "MaoDing", "ChanDiBiao"]
@@ -59,7 +89,7 @@ class LV(DETECTION):
             # self._detections是最主要的数据存储处
             # image file path -> [[x1, y1, x2, y2, [1-5]内部编号]]
             self._detections = None
-            self._cache_file = os.path.join(cache_dir, "{}.pkl".format(self._data))
+            self._cache_file = os.path.join(cache_dir, "{}_{}.pkl".format(self._data, self._dataset))
             self._load_data()
             self._db_inds = np.arange(len(self._image_ids))     # 给所有图片统一的编号
             # self._image_ids与self._db_inds均是在BASE中定义的，self._image_ids保存所有
@@ -82,10 +112,22 @@ class LV(DETECTION):
 
     def _image2annotation(self, image_path):
         """在LV数据集格式下，将image的路径转换为其标注的路径"""
-        image_file = os.path.basename(image_path)
-        bag_number = os.path.basename(os.path.dirname(image_path))
-        label_string = os.path.basename(os.path.dirname(os.path.dirname(image_path)))
-        return os.path.join(self._label_dir, label_string, bag_number, image_file[:-4] + ".json")
+        if self._dataset == "LV2":
+            image_file = os.path.basename(image_path)
+            bag_number = os.path.basename(os.path.dirname(image_path))
+            label_string = os.path.basename(os.path.dirname(os.path.dirname(image_path)))
+            return os.path.join(self._label_dir, label_string, bag_number, image_file[:-4] + ".json")
+        elif self._dataset == "LV1":
+            image_file = os.path.basename(image_path)
+            bag_number = os.path.basename(os.path.dirname(image_path))
+            label_string = os.path.basename(os.path.dirname(os.path.dirname(image_path)))
+            type_string = os.path.basename(os.path.dirname(os.path.dirname(
+                os.path.dirname(image_path))))
+            return os.path.join(
+                self._label_dir, type_string, label_string, bag_number,
+                bag_number + "-" + image_file + ".json")
+        else:
+            raise NotImplementedError("other splits are not implemented")
 
     def _extract_data(self):
         """Extract data
@@ -112,12 +154,23 @@ class LV(DETECTION):
             if os.path.exists(annotation_path):
                 with open(annotation_path, "r", encoding="utf-8") as fp:
                     json_dict = json.load(fp)
-                for item in json_dict["results"]:
-                    bbox = np.array(item["bbox"])
-                    bbox[[2, 3]] += bbox[[0, 1]]
-                    bboxes.append(bbox)
-                    categories.append(self._lv_to_class_map[
-                                          category_trans_dict[item["class"]]])
+                if self._dataset == "LV2":
+                    for item in json_dict["results"]:
+                        bbox = np.array(item["bbox"])
+                        bbox[[2, 3]] += bbox[[0, 1]]
+                        bboxes.append(bbox)
+                        categories.append(self._lv_to_class_map[
+                                              category_trans_dict[item["class"]]])
+                elif self._dataset == "LV1":
+                    for item in json_dict["marks"]:
+                        bbox = [item["point"]["xmin"], item["point"]["ymin"],
+                                item["point"]["xmax"], item["point"]["ymax"]]
+                        bbox = np.array(bbox)
+                        bboxes.append(bbox)
+                        categories.append(self._lv_to_class_map[
+                            category_trans_dict_lv1[item["ptitle"]]])
+                else:
+                    raise NotImplementedError("other splits are not implemented")
 
             bboxes = np.array(bboxes, dtype=float)
             categories = np.array(categories, dtype=float)

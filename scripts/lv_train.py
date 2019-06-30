@@ -224,13 +224,16 @@ if __name__ == "__main__":
     configs["system"]["snapshot_name"] = args.cfg_file
     system_configs.update_config(configs["system"])
 
+    train_split = system_configs.train_split
+    val_split = system_configs.val_split
+
     print("loading all datasets...")
     dataset = system_configs.dataset
     # threads = max(torch.cuda.device_count() * 2, 4)
     threads = args.threads
     print("using {} threads".format(threads))
-    training_dbs = [datasets[dataset](configs["db"]) for _ in range(threads)]
-    validation_db = datasets[dataset](configs["db"])
+    training_dbs = [datasets[dataset](configs["db"], train_split) for _ in range(threads)]
+    validation_db = datasets[dataset](configs["db"], val_split)
 
     print("system config...")
     pprint.pprint(system_configs.full)
