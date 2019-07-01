@@ -8,6 +8,7 @@ import datetime
 from tqdm import tqdm
 import numpy as np
 from PIL import Image
+import cv2
 
 from db.detection import DETECTION
 from config import system_configs
@@ -285,6 +286,18 @@ class LV(DETECTION):
                 img = np.array(fp, dtype=np.uint8)
             display_instances(img, bboxes[:, 0:5], ["background"] + self._cat_ids,
                               scores=bboxes[:, 5], save_path=save_path, show=show)
+
+    def display_detection_demo(self, images, det, save_path=None, show=True):
+        """输入convert_to_detections后产生的结果，显示所有图片，且输入图片，用于demo"""
+        for image_id, bboxes in det.items():
+            bboxes = np.array(bboxes, dtype=np.float32)
+            img = images[image_id]
+            # 模型中使用BGR，而visualize中使用RGB
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            display_instances(img, bboxes[:, 0:5],
+                              ["background"] + self._cat_ids,
+                              scores=bboxes[:, 5], save_path=save_path,
+                              show=show)
 
 
 class LVEval:

@@ -129,7 +129,7 @@ def display_instances(image, boxes, class_names,
     if auto_show and show:
         plt.show()
     if save_path is not None:
-        plt.savefig(save_path)
+        plt.savefig(save_path, bbox_inches='tight', pad_inches=0)
     if auto_show:
         plt.close()
 

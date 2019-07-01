@@ -1,6 +1,5 @@
 import os
 import cv2
-import json
 import copy
 import numpy as np
 import torch
@@ -14,7 +13,7 @@ from external.nms import soft_nms, soft_nms_merge
 from .coco import _rescale_dets, kp_decode
 from db.lv import LV
 from nnet.py_factory import NetworkFactory
-from utils.image import constraint_max_size
+from utils.image import pad_resize_image, constraint_max_size
 
 colours = np.random.rand(5, 3)      # 一共有5类，故颜色为(5, 3)
 
@@ -344,8 +343,8 @@ def testing(db, nnet, result_dir, debug=False):
 def demoing(image_id, db, nnet, result_file):
     image = cv2.imread(image_id)
     # 由于可能有很大的图，因此也要限制大小
-    image = constraint_max_size(image, 1024)
+    image = constraint_max_size(image, 511)
     det = dict()
     det[image_id] = globals()[system_configs.sampling_function + "_image"](image, db, nnet)
     det = db.convert_to_detections(det, score_threshold=0.4)
-    db.display_detection(det, save_path=result_file, show=False)
+    db.display_detection_demo({image_id: image}, det, save_path=result_file, show=False)

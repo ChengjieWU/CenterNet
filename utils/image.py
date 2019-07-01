@@ -96,7 +96,30 @@ def constraint_max_size(x, cons: int):
         return x
     if height > width:
         ratio = height / cons
-        return cv2.resize(x, (cons, int(width // ratio)))
+        # cv2这边很坑，size为先横轴再纵轴，与numpy的顺序是反的
+        return cv2.resize(x, (int(width / ratio), cons))
     else:
         ratio = width / cons
-        return cv2.resize(x, (int(height // ratio), cons))
+        return cv2.resize(x, (cons, int(height / ratio)))
+
+
+def pad_resize_image(x, size):
+    """Pad and resize a given image.
+
+    :param x: A 3-d numpy array of shape [height, width, channel].
+    :param size: (height, width)
+    :return: A padded and resized 3-d numpy array.
+    """
+    height, width = size
+
+    if x.shape[0] > x.shape[1]:
+        diff = x.shape[0] - x.shape[1]
+        x = cv2.copyMakeBorder(x, 0, 0, diff // 2, diff - diff // 2,
+                               borderType=cv2.BORDER_CONSTANT, value=0)
+    else:
+        diff = x.shape[1] - x.shape[0]
+        x = cv2.copyMakeBorder(x, diff // 2, diff - diff // 2, 0, 0,
+                               borderType=cv2.BORDER_CONSTANT, value=0)
+    x = cv2.resize(x, (height, width),
+                   interpolation=cv2.INTER_LINEAR)
+    return x
