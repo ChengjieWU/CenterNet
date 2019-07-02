@@ -19,8 +19,8 @@ colours = np.random.rand(5, 3)      # 一共有5类，故颜色为(5, 3)
 
 
 def kp_detection_image(image, db: LV, nnet: NetworkFactory,
-                        debug=False, decode_func=kp_decode, db_ind=None,
-                        debug_dir=None):
+                       debug=False, decode_func=kp_decode, db_ind=None,
+                       debug_dir=None):
     """对单张图做detection
 
     :param image: 使用cv2.imread读入的图
@@ -284,7 +284,7 @@ def kp_detection_image(image, db: LV, nnet: NetworkFactory,
         # debug_file1 = os.path.join(debug_dir, "{}.pdf".format(db_ind))
         debug_file2 = os.path.join(debug_dir, "{}.jpg".format(db_ind))
         # plt.savefig(debug_file1)
-        plt.savefig(debug_file2)
+        plt.savefig(debug_file2, bbox_inches='tight', pad_inches=0)
         plt.close()
         # cv2.imwrite(debug_file, image, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
 
@@ -313,6 +313,7 @@ def kp_detection(db: LV, nnet: NetworkFactory,
     db_inds = db.db_inds[100:200] if debug else db.db_inds[:500]  # 取500张图片
     num_images = db_inds.size
 
+    # top_bboxes: {image_id -> {[1-5] -> (该类中检测到的数目, 5)}}, 分别为tl_xs, tl_ys, br_xs, br_ys, scores
     top_bboxes = {}
     for ind in tqdm(range(0, num_images), ncols=80, desc="locating kps"):
         db_ind = db_inds[ind]
@@ -326,7 +327,6 @@ def kp_detection(db: LV, nnet: NetworkFactory,
         top_bboxes[image_id] = kp_detection_image(
             image, db, nnet, debug, decode_func, db_ind, debug_dir)
 
-    # top_bboxes: image_id -> {[1-5] -> (该类中检测到的数目, 5)}, 分别为tl_xs, tl_ys, br_xs, br_ys, scores
     # 显示检测结果
     detections = db.convert_to_detections(top_bboxes, score_threshold=0.4)
     # db.display_detection(detections)
