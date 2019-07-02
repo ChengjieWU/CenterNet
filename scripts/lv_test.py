@@ -62,13 +62,14 @@ def test(db, split, testiter, debug=False, suffix=None):
 class Args:
     def __init__(self):
         self.cfg_file = "LV-CenterNet-104"
-        self.testiter = 45000
+        self.testiter = 145000
         self.split = "LV1"
         self.suffix = None
-        self.debug = False
+        self.debug = True
 
 
 if __name__ == "__main__":
+    # 若当作脚本运行，使用parse_args；若在notebook中运行，使用Args类
     args = parse_args()
     # args = Args()
 

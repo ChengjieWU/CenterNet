@@ -55,6 +55,7 @@ def demo(db, testiter, image_dir, result_dir):
 
 
 if __name__ == "__main__":
+    # 若当作脚本运行，使用parse_args；若在notebook中运行，使用Args类
     args = parse_args()
     # args = Args()
 

@@ -321,6 +321,8 @@ def kp_detection(db: LV, nnet: NetworkFactory,
         image_id = db.image_ids(db_ind)
         image_file = db.image_file(db_ind)
         image = cv2.imread(image_file)
+
+        # TODO: 为了保护模型，此处限制了最大大小。应该调整image和annotation大小
         if max(image.shape[0], image.shape[1]) > 1024:
             continue
 
