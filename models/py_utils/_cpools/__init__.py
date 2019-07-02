@@ -2,9 +2,7 @@ import torch
 
 from torch import nn
 from torch.autograd import Function
-import sys
-import os
-sys.path.append(os.path.join(os.path.dirname(__file__),'dist/cpools-0.0.0-py3.6-linux-x86_64.egg'))
+
 import top_pool, bottom_pool, left_pool, right_pool
 
 class TopPoolFunction(Function):
